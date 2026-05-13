@@ -1,0 +1,40 @@
+# syntax=docker/dockerfile:1
+# Imagen con CUDA runtime para acelerar faster-whisper en GPU NVIDIA (opcional).
+
+FROM nvidia/cuda:12.2.2-runtime-ubuntu22.04
+
+LABEL org.opencontainers.image.title="pina-transcribe-gpu"
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONIOENCODING=utf-8 \
+    PIP_NO_CACHE_DIR=1 \
+    HF_HOME=/root/.cache/huggingface
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        python3 \
+        python3-pip \
+        python3-venv \
+        ffmpeg \
+        ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip3 install --upgrade pip \
+    && pip3 install -r requirements.txt
+
+COPY transcribe.py launcher.py web_server.py docker_entrypoint.py ./
+COPY utils/ utils/
+
+RUN mkdir -p /app/logs /app/temp /app/outputs
+
+EXPOSE 15000
+
+VOLUME ["/app/outputs", "/app/logs"]
+
+ENTRYPOINT ["python3", "/app/docker_entrypoint.py"]
+CMD []

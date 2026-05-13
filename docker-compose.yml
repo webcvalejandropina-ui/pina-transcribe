@@ -1,0 +1,36 @@
+name: pina
+
+services:
+  transcribe:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: pina-transcribe:cpu
+    ports:
+      - "15000:15000"
+    stdin_open: false
+    tty: false
+    restart: unless-stopped
+    volumes:
+      - ./outputs:/app/outputs
+      - ./logs:/app/logs
+    # UI web: http://localhost:15000  |  Consola: docker compose logs -f transcribe
+    # Launcher TTY: docker compose run --rm -it transcribe launcher
+    # CLI: docker compose run --rm transcribe youtube ID --cpu
+
+  transcribe-gpu:
+    profiles:
+      - gpu
+    build:
+      context: .
+      dockerfile: Dockerfile.gpu
+    image: pina-transcribe:gpu
+    ports:
+      - "15000:15000"
+    stdin_open: false
+    tty: false
+    restart: unless-stopped
+    volumes:
+      - ./outputs:/app/outputs
+      - ./logs:/app/logs
+    gpus: all

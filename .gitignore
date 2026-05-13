@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+venv/
+.venv/
+
+# Local configuration
+.env
+.env.*
+.claude/
+
+# Runtime data
+logs/
+temp/
+outputs/
+
+# System files
+.DS_Store
