@@ -17,10 +17,11 @@ from collections import OrderedDict
 from pathlib import Path
 from typing import Any, Literal
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from pydantic import BaseModel, Field
 
+from app_metadata import APP_CHANGES, APP_NAME, APP_VERSION, UPDATED_AT
 from utils.helpers import project_root
 from utils.pipeline import run_transcription_job
 from utils.whisper_models import ALLOWED_MODELS, validate_model
@@ -28,7 +29,37 @@ from utils.whisper_models import ALLOWED_MODELS, validate_model
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("web_server")
 
-app = FastAPI(title="piña-transcribe", version="2.0")
+app = FastAPI(
+    title="piña-transcribe",
+    version=APP_VERSION,
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
+)
+
+_FAVICON_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<rect width="64" height="64" rx="14" fill="#111"/>
+<path d="M32 20c-5-7-10-8-14-8 3 4 5 7 6 11-5-3-9-2-12-1 5 2 8 4 10 7h20c2-3 5-5 10-7-3-1-7-2-12 1 1-4 3-7 6-11-4 0-9 1-14 8Z" fill="#56a64b"/>
+<path d="M18 30c0-4 4-7 8-7h12c5 0 8 3 8 7l-3 20c-1 5-5 8-10 8h-2c-5 0-9-3-10-8l-3-20Z" fill="#f4c542"/>
+<path d="m22 31 20 20m0-20L22 51M19 40h26" stroke="#111" stroke-width="3" opacity=".65"/>
+</svg>"""
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Permissions-Policy"] = (
+        "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+    )
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; "
+        "script-src 'self' 'unsafe-inline'; connect-src 'self'; font-src 'self'; "
+        "frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+    )
+    return response
 
 _MAX_HISTORY = 24
 
@@ -170,6 +201,15 @@ async def index() -> str:
     return _render_page(models_opts)
 
 
+@app.get("/favicon.svg", include_in_schema=False)
+async def favicon() -> Response:
+    return Response(
+        content=_FAVICON_SVG,
+        media_type="image/svg+xml",
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
+
+
 def _ordered_models() -> list[str]:
     order = [
         "tiny", "tiny.en", "base", "base.en",
@@ -181,7 +221,17 @@ def _ordered_models() -> list[str]:
 
 @app.get("/health")
 async def health() -> dict[str, str]:
-    return {"status": "ok"}
+    return {"status": "ok", "version": APP_VERSION, "updated_at": UPDATED_AT}
+
+
+@app.get("/api/about")
+async def api_about() -> dict[str, Any]:
+    return {
+        "name": APP_NAME,
+        "version": APP_VERSION,
+        "updated_at": UPDATED_AT,
+        "changes": list(APP_CHANGES),
+    }
 
 
 @app.get("/api/models")
@@ -272,15 +322,14 @@ def create_app() -> FastAPI:
 
 
 def _render_page(models_opts: str) -> str:
+    changes_html = "".join(f"<li>{change}</li>" for change in APP_CHANGES)
     return f"""<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>PIÑA-TRANSCRIBE / Transcripcion local</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
 <style>
 :root {{
   --ink:#111111;
@@ -294,8 +343,8 @@ def _render_page(models_opts: str) -> str:
   --hairline-soft:#e5e5e5;
   --sale:#d30005;
   --success:#007d48;
-  --sans:'Inter','Helvetica Neue',Helvetica,Arial,sans-serif;
-  --display:'Bebas Neue','Inter','Helvetica Neue',sans-serif;
+  --sans:'Avenir Next','Helvetica Neue',Helvetica,Arial,sans-serif;
+  --display:'Arial Narrow','Avenir Next Condensed','Helvetica Neue',sans-serif;
 }}
 * {{ box-sizing:border-box; }}
 html,body {{ margin:0; padding:0; background:var(--canvas); color:var(--ink); font-family:var(--sans); }}
@@ -641,6 +690,18 @@ main {{
   background:#222; padding:2px 6px; border-radius:4px; color:#fff;
 }}
 
+.release-block {{ border:1px solid var(--hairline-soft); padding:24px; }}
+.release-block .release-meta {{
+  font-size:11px; font-weight:600; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--mute); margin-bottom:12px;
+}}
+.release-block h3 {{
+  font-family:var(--display); font-size:24px; text-transform:uppercase;
+  margin:0 0 12px; letter-spacing:0;
+}}
+.release-block ul {{ margin:0; padding-left:18px; color:var(--charcoal); }}
+.release-block li {{ margin:7px 0; font-size:12px; line-height:1.45; }}
+
 /* footer */
 footer {{
   border-top:1px solid var(--hairline);
@@ -655,7 +716,7 @@ footer a {{ color:var(--mute); text-decoration:none; margin-left:16px; }}
 <body>
 
 <div class="utility-bar">
-  <div class="meta">PUERTO 15000 / WHISPER LOCAL / FFMPEG + YT-DLP</div>
+  <div class="meta">V{APP_VERSION} / ACTUALIZADO {UPDATED_AT} / PUERTO 15000</div>
   <div class="group">
     <a href="https://github.com/openai/whisper" target="_blank" rel="noopener">Whisper</a>
     <a href="https://github.com/yt-dlp/yt-dlp" target="_blank" rel="noopener">yt-dlp</a>
@@ -779,6 +840,12 @@ footer a {{ color:var(--mute); text-decoration:none; margin-left:16px; }}
       <p style="margin-top:16px">Pega cualquier URL: la plataforma y el ID se detectan automaticamente.</p>
     </div>
 
+    <div class="release-block">
+      <div class="release-meta">Versión {APP_VERSION} · {UPDATED_AT}</div>
+      <h3>Últimos cambios.</h3>
+      <ul>{changes_html}</ul>
+    </div>
+
     <div class="history">
       <h3>Recientes.</h3>
       <div id="history-list"></div>
@@ -787,7 +854,7 @@ footer a {{ color:var(--mute); text-decoration:none; margin-left:16px; }}
 </main>
 
 <footer>
-  <div>PIÑA-TRANSCRIBE / Pipeline local, sin telemetria</div>
+  <div>PIÑA-TRANSCRIBE V{APP_VERSION} / Actualizado {UPDATED_AT} / Sin telemetria</div>
   <div class="legal">Respeta los terminos de YouTube y Twitch y las licencias de los modelos Whisper.</div>
 </footer>
 

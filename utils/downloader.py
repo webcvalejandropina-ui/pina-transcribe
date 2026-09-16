@@ -5,6 +5,7 @@ Descarga de audio con yt-dlp y extracción a WAV mediante FFmpeg.
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 from typing import Any, Callable
 
@@ -19,6 +20,51 @@ class DownloadError(RuntimeError):
     """Fallo de descarga o extracción de audio."""
 
     pass
+
+
+def _build_ydl_opts(
+    out_template: str,
+    hooks: list[YtdlpProgressCallback],
+    quiet_ytdlp: bool,
+) -> dict[str, Any]:
+    """Construye opciones reproducibles y compatibles con YouTube moderno."""
+    opts: dict[str, Any] = {
+        # HLS evita algunos 403 de URLs directas; mantenemos fallback de audio.
+        "format": "bestaudio[protocol*=m3u8]/bestaudio/best",
+        "outtmpl": out_template,
+        "quiet": quiet_ytdlp,
+        "no_warnings": quiet_ytdlp,
+        "noplaylist": True,
+        "progress_hooks": hooks,
+        "postprocessors": [
+            {
+                "key": "FFmpegExtractAudio",
+                "preferredcodec": "wav",
+                "preferredquality": "192",
+            }
+        ],
+        "ignoreerrors": False,
+        "retries": 5,
+        "fragment_retries": 5,
+        "extractor_retries": 3,
+        "socket_timeout": 30,
+        "concurrent_fragment_downloads": 1,
+    }
+
+    proxy = os.getenv("YTDLP_PROXY", "").strip()
+    if proxy:
+        opts["proxy"] = proxy
+
+    cookies_file = os.getenv("YTDLP_COOKIES_FILE", "").strip()
+    if cookies_file:
+        cookie_path = Path(cookies_file)
+        if not cookie_path.is_file():
+            raise DownloadError(
+                "YTDLP_COOKIES_FILE está configurado, pero el archivo no existe."
+            )
+        opts["cookiefile"] = str(cookie_path)
+
+    return opts
 
 
 def _default_logger_hook(d: dict[str, Any]) -> None:
@@ -69,25 +115,7 @@ def download_audio_to_wav(
     if extra_progress_hooks:
         hooks.extend(extra_progress_hooks)
 
-    ydl_opts: dict[str, Any] = {
-        "format": "bestaudio/best",
-        "outtmpl": out_template,
-        "quiet": quiet_ytdlp,
-        "no_warnings": quiet_ytdlp,
-        "noplaylist": True,
-        "progress_hooks": hooks,
-        "postprocessors": [
-            {
-                "key": "FFmpegExtractAudio",
-                "preferredcodec": "wav",
-                "preferredquality": "192",
-            }
-        ],
-        "ignoreerrors": False,
-        "retries": 3,
-        "fragment_retries": 3,
-        "socket_timeout": 30,
-    }
+    ydl_opts = _build_ydl_opts(out_template, hooks, quiet_ytdlp)
 
     info: dict[str, Any] = {}
 
@@ -102,6 +130,11 @@ def download_audio_to_wav(
             ) from e
         if "unavailable" in err_msg or "deleted" in err_msg:
             raise DownloadError("El video no está disponible (eliminado o restricción).") from e
+        if "403" in err_msg or "forbidden" in err_msg:
+            raise DownloadError(
+                "YouTube rechazó la descarga (HTTP 403). La imagen incluye Deno/EJS; "
+                "si persiste, configura YTDLP_COOKIES_FILE o YTDLP_PROXY."
+            ) from e
         raise DownloadError(f"Error de red o descarga con yt-dlp: {e}") from e
     except Exception as e:
         raise DownloadError(f"Fallo inesperado durante la descarga: {e}") from e

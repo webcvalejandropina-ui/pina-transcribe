@@ -2,6 +2,8 @@
 
 Transcriptor local para videos de **YouTube** y **Twitch VOD**. Descarga el audio con `yt-dlp`, lo normaliza con `ffmpeg` y genera una transcripción con `faster-whisper`, sin enviar el contenido a servicios externos.
 
+**Versión actual:** `2.1.0` · **Actualizada:** `2026-09-16` · [Ver cambios](CHANGELOG.md)
+
 Incluye una interfaz web en FastAPI, una CLI directa y un launcher interactivo para Docker.
 
 ## Características
@@ -11,6 +13,8 @@ Incluye una interfaz web en FastAPI, una CLI directa y un launcher interactivo p
 - Modelos `faster-whisper` configurables (`tiny`, `base`, `small`, etc.).
 - Ejecución local con Python o aislada con Docker.
 - Perfil opcional para GPU NVIDIA mediante Docker Compose.
+- Runtime Deno/EJS incluido para los retos JavaScript actuales de YouTube.
+- Favicon, versión, fecha y cambios visibles en la interfaz.
 
 ## Requisitos
 
@@ -40,6 +44,14 @@ Abre la aplicación:
 ```text
 http://127.0.0.1:15000
 ```
+
+Por seguridad, Compose publica la aplicación únicamente en localhost. Para acceder desde otra máquina de una red confiable:
+
+```bash
+BIND_ADDRESS=0.0.0.0 docker compose up -d --build transcribe
+```
+
+No expongas el puerto `15000` directamente a Internet: la aplicación no implementa autenticación de usuarios.
 
 También puedes usar el launcher incluido:
 
@@ -131,8 +143,35 @@ docker compose --profile gpu run --rm transcribe-gpu twitch 1234567890 --model b
 
 Volúmenes montados:
 
-- `./outputs` -> `/app/outputs`
-- `./logs` -> `/app/logs`
+- `outputs-data` -> `/app/outputs`
+- `logs-data` -> `/app/logs`
+- `model-cache` -> caché persistente de modelos Whisper.
+
+La imagen CPU se ejecuta sin root. Compose activa filesystem de solo lectura, elimina capacidades Linux y añade un healthcheck.
+
+## Configuración opcional de yt-dlp
+
+La imagen ya incluye la versión compatible de `yt-dlp`, el paquete EJS y Deno. Si YouTube limita la IP del servidor, puedes usar cookies exportadas o un proxy sin añadirlos a la imagen:
+
+```bash
+cp .env.example .env
+```
+
+Variables disponibles:
+
+- `YTDLP_PROXY`: URL de proxy compatible con yt-dlp.
+- `YTDLP_COOKIES_FILE`: ruta interna a un archivo de cookies Netscape montado como volumen de solo lectura.
+
+No subas cookies, tokens ni archivos `.env` al repositorio.
+
+## Seguridad
+
+- Swagger, ReDoc y OpenAPI están deshabilitados en producción.
+- La UI no carga fuentes, analítica ni recursos de terceros.
+- Se envían CSP, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy` y `Permissions-Policy`.
+- Las URLs se reducen a un ID validado y luego se reconstruyen, evitando descargas arbitrarias.
+- Los archivos descargables se validan para permanecer dentro de `outputs/`.
+- La publicación de red queda limitada a `127.0.0.1` salvo configuración explícita.
 
 ## Salidas
 
@@ -166,6 +205,7 @@ Las carpetas `logs`, `temp` y `outputs` se crean automáticamente al ejecutar el
 - Video privado o no disponible: revisa la URL y los logs.
 - GPU no detectada en Docker: usa el servicio CPU `transcribe`.
 - Error de finales de línea en scripts: reconstruye con `docker compose build --no-cache transcribe`.
+- `HTTP Error 403` de YouTube: reconstruye la imagen para obtener `yt-dlp`/EJS compatibles. Si la IP está limitada, configura `YTDLP_COOKIES_FILE` o `YTDLP_PROXY`.
 
 ## Licencia
 
