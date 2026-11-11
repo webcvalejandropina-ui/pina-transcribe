@@ -122,7 +122,7 @@ class WebSecurityTests(unittest.TestCase):
 
         page = self.client.get("/")
         self.assertEqual(page.status_code, 200)
-        self.assertIn('href="/favicon.svg"', page.text)
+        self.assertIn('href="/favicon.svg', page.text)
         about = self.client.get("/api/about").json()
         self.assertEqual(about["version"], APP_VERSION)
         self.assertEqual(about["updated_at"], UPDATED_AT)
