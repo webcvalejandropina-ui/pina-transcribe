@@ -448,3 +448,7 @@ html,body { transition:background-color .2s, color .2s; }
 a.btn { text-decoration:none; }
 .btn-ghost:hover { background:var(--soft-cloud); }
 .source-link { color:var(--ink); }
+.chip:disabled { opacity:.35; cursor:not-allowed; }
+.field-hint.warn { color:var(--sale); }
+.field-hint.good { color:var(--success); }
+#model-hint { margin-top:12px; }

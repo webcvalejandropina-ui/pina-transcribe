@@ -16,6 +16,22 @@ from typing import Any
 from utils.transcriber import cpu_threads, cuda_device_count
 
 
+# Memoria aproximada (GiB) que ocupa cada modelo en CPU con int8, más margen.
+MODEL_MEMORY_GB = {
+    "tiny": 1.0,
+    "base": 1.5,
+    "small": 2.5,
+    "medium": 4.0,
+    "large-v1": 6.0,
+    "large-v2": 6.0,
+    "large-v3": 6.0,
+    "large": 6.0,
+}
+
+# Orden de velocidad (de más rápido a más lento) para comparar modelos.
+MODEL_ORDER = ("tiny", "base", "small", "medium", "large-v1", "large-v2", "large-v3", "large")
+
+
 def _cgroup_limit_bytes() -> int | None:
     """Límite de memoria del contenedor (cgroup v2 o v1), si existe."""
     for path in ("/sys/fs/cgroup/memory.max", "/sys/fs/cgroup/memory/memory.limit_in_bytes"):
@@ -93,4 +109,7 @@ def system_summary() -> dict[str, Any]:
         "memory_gb": mem,
         "gpu_count": gpus,
         "recommended_model": recommend_model(cores, mem, gpus),
+        "recommended_device": "gpu" if gpus > 0 else "cpu",
+        "model_memory_gb": MODEL_MEMORY_GB,
+        "model_order": list(MODEL_ORDER),
     }

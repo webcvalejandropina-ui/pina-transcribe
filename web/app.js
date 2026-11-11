@@ -128,13 +128,47 @@
     }));
   };
   bindSegmented('platform', (v) => { state.platform = v; });
-  bindSegmented('device', (v) => { state.device = v; });
+  bindSegmented('device', (v) => { state.device = v; renderHints(); });
   setSegmented('platform', 'youtube');
   setSegmented('device', 'auto');
 
   // ---------------------------------------------------------------- modelos
   // Sin preferencia guardada, se usa el modelo recomendado para este equipo.
   const currentModel = () => state.model || state.recommended || 'tiny';
+  // Avisos según el equipo: qué procesador se usará y si el modelo encaja.
+  const baseModel = (m) => m.replace(/\.en$/, '');
+  const setHint = (id, text, kind) => {
+    const el = $(id);
+    el.textContent = text || '';
+    el.classList.toggle('warn', kind === 'warn');
+    el.classList.toggle('good', kind === 'good');
+  };
+  const renderHints = () => {
+    const s = state.system;
+    if (!s) { setHint('device-hint', t('side.checking')); setHint('model-hint', ''); return; }
+    const gpuBtn = $('device').querySelector('[data-value="gpu"]');
+    gpuBtn.disabled = s.gpu_count === 0;
+    if (s.gpu_count === 0 && state.device === 'gpu') { state.device = 'auto'; setSegmented('device', 'auto'); }
+    if (s.gpu_count > 0 && state.device !== 'cpu') setHint('device-hint', t('hint.device.gpu', { n: s.gpu_count }), 'good');
+    else setHint('device-hint', t('hint.device.cpu', { n: s.cpu_threads }));
+
+    const m = currentModel(), r = state.recommended;
+    const order = s.model_order || [];
+    const need = (s.model_memory_gb || {})[baseModel(m)];
+    let text, kind;
+    if (need && s.memory_gb && need > s.memory_gb) {
+      text = t('hint.model.heavy', { m, g: need, have: s.memory_gb, r }); kind = 'warn';
+    } else if (baseModel(m) === r) {
+      text = t('hint.model.ideal', { m }); kind = 'good';
+    } else if (order.indexOf(baseModel(m)) > order.indexOf(r)) {
+      text = t('hint.model.slow', { m, r }); kind = 'warn';
+    } else {
+      text = t('hint.model.fast', { m, r });
+    }
+    if (m.endsWith('.en')) text += ' ' + t('hint.model.en');
+    setHint('model-hint', text, kind);
+  };
+
   const renderModels = () => {
     const list = state.models.length ? state.models : DEFAULT_MODELS;
     const selected = currentModel();
@@ -144,6 +178,7 @@
       store.set('pina.model', state.model);
       renderModels();
     }));
+    renderHints();
   };
 
   // ---------------------------------------------------------------- detección de enlaces
@@ -466,6 +501,7 @@
     $('sys-mem').textContent = s.memory_gb != null ? s.memory_gb + ' GB' : '--';
     $('sys-gpu').textContent = s.gpu_count > 0 ? '× ' + s.gpu_count : t('side.gpu.none');
     $('sys-model').textContent = s.recommended_model;
+    renderHints();
   };
 
   const init = async () => {
