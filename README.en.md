@@ -113,15 +113,15 @@ python -m uvicorn web_server:app --host 127.0.0.1 --port 15000
 
 ## Which model should I pick?
 
-The **Your machine** card in the interface suggests one automatically. As a guide:
+When the interface opens it detects your GPU, cores and memory: the best quality is preselected, anything that won't fit in memory is disabled and you're warned when an option will be slow. As a guide:
 
-| Model | Approx. memory | Best for |
+| Quality | Approx. memory | Best for |
 |---|---|---|
-| `tiny` | ~1 GB | Very modest machines, quick tests |
-| `base` | ~1.5 GB | 4-core laptops, good balance |
-| `small` | ~2.5 GB | 6+ core CPUs with 8 GB RAM |
-| `medium` | ~4 GB | More accuracy if you can wait |
-| `large-v3` | ~6 GB | NVIDIA GPUs, or lots of patience on CPU |
+| Very fast · `tiny` | ~1 GB | Very modest machines, quick tests |
+| Fast · `base` | ~1.5 GB | 4-core laptops, good balance |
+| Balanced · `small` | ~2.5 GB | 6+ core CPUs with 8 GB RAM |
+| Accurate · `medium` | ~4 GB | More accuracy if you can wait |
+| Maximum · `large-v3` | ~6 GB | NVIDIA GPUs, or lots of patience on CPU |
 
 The `.en` variants (`base.en`, `small.en`…) are available through the API and CLI and do slightly better on English-only audio.
 

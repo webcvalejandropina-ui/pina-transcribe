@@ -152,27 +152,46 @@
     if (s.gpu_count > 0 && state.device !== 'cpu') setHint('device-hint', t('hint.device.gpu', { n: s.gpu_count }), 'good');
     else setHint('device-hint', t('hint.device.cpu', { n: s.cpu_threads }));
 
-    const m = currentModel(), r = state.recommended;
-    const order = s.model_order || [];
-    const need = (s.model_memory_gb || {})[baseModel(m)];
+    const m = currentModel();
+    const r = t('model.' + state.recommended);
+    const gpuTxt = s.gpu_count > 0 ? s.gpu_count + ' GPU NVIDIA' : t('hint.nogpu');
+    const st = modelStatus(m);
     let text, kind;
-    if (need && s.memory_gb && need > s.memory_gb) {
-      text = t('hint.model.heavy', { m, g: need, have: s.memory_gb, r }); kind = 'warn';
-    } else if (baseModel(m) === r) {
-      text = t('hint.model.ideal', { m }); kind = 'good';
-    } else if (order.indexOf(baseModel(m)) > order.indexOf(r)) {
-      text = t('hint.model.slow', { m, r }); kind = 'warn';
+    if (st === 'nofit') {
+      text = t('hint.model.heavy', { g: (s.model_memory_gb || {})[m], have: s.memory_gb }); kind = 'warn';
+    } else if (st === 'ideal') {
+      text = t('hint.model.ideal', { cpu: s.cpu_threads, mem: s.memory_gb ?? '?', gpu: gpuTxt }); kind = 'good';
+    } else if (st === 'slower') {
+      text = t('hint.model.slow', { r }); kind = 'warn';
     } else {
-      text = t('hint.model.fast', { m, r });
+      text = t('hint.model.fast', { r });
     }
-    if (m.endsWith('.en')) text += ' ' + t('hint.model.en');
     setHint('model-hint', text, kind);
   };
 
+  // Botones de calidad: nombre claro + estado calculado para este equipo.
+  const UI_MODELS = ['tiny', 'base', 'small', 'medium', 'large-v3'];
+  const modelStatus = (m) => {
+    const s = state.system;
+    if (!s) return '';
+    const need = (s.model_memory_gb || {})[m];
+    if (need && s.memory_gb && need > s.memory_gb) return 'nofit';
+    if (m === state.recommended) return 'ideal';
+    const order = s.model_order || [];
+    return order.indexOf(m) < order.indexOf(state.recommended) ? 'faster' : 'slower';
+  };
   const renderModels = () => {
-    const list = state.models.length ? state.models : DEFAULT_MODELS;
+    const available = state.models.length ? state.models : DEFAULT_MODELS;
+    const list = UI_MODELS.filter((m) => available.includes(m));
     const selected = currentModel();
-    $('models').innerHTML = list.map((m) => `<button type="button" class="chip${m === selected ? ' active' : ''}" role="radio" data-value="${m}" aria-checked="${m === selected}">${m}${m === state.recommended ? `<sup>${escapeHtml(t('form.recommended'))}</sup>` : ''}</button>`).join('');
+    $('models').innerHTML = list.map((m) => {
+      const st = modelStatus(m);
+      const tag = st ? t('model.status.' + st) : '';
+      return `<button type="button" class="chip chip-model${m === selected ? ' active' : ''}${st ? ' st-' + st : ''}" role="radio" data-value="${m}" aria-checked="${m === selected}"${st === 'nofit' ? ' disabled' : ''}>
+        <span class="m-name">${escapeHtml(t('model.' + m))}</span>
+        <span class="m-meta">${escapeHtml(m)}${tag ? ' · ' + escapeHtml(tag) : ''}</span>
+      </button>`;
+    }).join('');
     $('models').querySelectorAll('.chip').forEach((c) => c.addEventListener('click', () => {
       state.model = c.dataset.value;
       store.set('pina.model', state.model);
@@ -500,7 +519,7 @@
     $('sys-cpu').textContent = s.cpu_threads;
     $('sys-mem').textContent = s.memory_gb != null ? s.memory_gb + ' GB' : '--';
     $('sys-gpu').textContent = s.gpu_count > 0 ? '× ' + s.gpu_count : t('side.gpu.none');
-    $('sys-model').textContent = s.recommended_model;
+    $('sys-model').textContent = t('model.' + s.recommended_model);
     renderHints();
   };
 
@@ -515,7 +534,7 @@
       state.system = system.value.data;
       state.recommended = state.system.recommended_model;
     }
-    if (state.model && state.models.length && !state.models.includes(state.model)) state.model = '';
+    if (state.model && !UI_MODELS.includes(state.model)) state.model = '';
     renderModels();
     renderAbout();
     renderSystem();

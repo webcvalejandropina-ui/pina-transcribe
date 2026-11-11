@@ -113,15 +113,15 @@ python -m uvicorn web_server:app --host 127.0.0.1 --port 15000
 
 ## ¿Qué modelo elijo?
 
-La tarjeta **Tu equipo** de la interfaz sugiere uno automáticamente. Como referencia:
+Al abrir la interfaz se detectan la GPU, los núcleos y la memoria de tu equipo: se preselecciona la mejor calidad, se desactiva lo que no cabe en memoria y se avisa si una opción va a ir lenta. Como referencia:
 
-| Modelo | Memoria aprox. | Ideal para |
+| Calidad | Memoria aprox. | Ideal para |
 |---|---|---|
-| `tiny` | ~1 GB | Equipos muy modestos, pruebas rápidas |
-| `base` | ~1,5 GB | Portátiles de 4 núcleos, buen equilibrio |
-| `small` | ~2,5 GB | CPU de 6+ núcleos y 8 GB de RAM |
-| `medium` | ~4 GB | Más precisión si no importa esperar |
-| `large-v3` | ~6 GB | GPU NVIDIA o mucha paciencia en CPU |
+| Muy rápida · `tiny` | ~1 GB | Equipos muy modestos, pruebas rápidas |
+| Rápida · `base` | ~1,5 GB | Portátiles de 4 núcleos, buen equilibrio |
+| Equilibrada · `small` | ~2,5 GB | CPU de 6+ núcleos y 8 GB de RAM |
+| Precisa · `medium` | ~4 GB | Más precisión si no importa esperar |
+| Máxima · `large-v3` | ~6 GB | GPU NVIDIA o mucha paciencia en CPU |
 
 Las variantes `.en` (`base.en`, `small.en`…) están disponibles por API y CLI y van algo mejor con audio solo en inglés.
 
