@@ -225,6 +225,7 @@ pina-transcribe/
 ├── Dockerfile             Imagen CPU (amd64/arm64)
 ├── Dockerfile.gpu         Imagen CUDA (amd64)
 ├── docker-compose.yml
+├── DESIGN.md            Sistema de diseño de la interfaz
 ├── pina.env.example       Plantilla de configuración
 ├── tests/
 └── docs/screenshots/

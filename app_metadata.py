@@ -8,7 +8,7 @@ APP_REPO = "https://github.com/webcvalejandropina-ui/pina-transcribe"
 # Cambios de la versión, en los dos idiomas de la interfaz.
 APP_CHANGES = {
     "es": (
-        "Interfaz rediseñada con modo claro, oscuro y automático.",
+        "Modo claro, oscuro y automático con el mismo diseño editorial.",
         "Interfaz completa en español e inglés.",
         "Recorte por inicio y fin: solo se descarga el tramo elegido.",
         "Subtítulos .srt además del .txt.",
@@ -16,7 +16,7 @@ APP_CHANGES = {
         "Recomendación de modelo según la CPU, la RAM y la GPU de tu equipo.",
     ),
     "en": (
-        "Redesigned interface with light, dark and automatic themes.",
+        "Light, dark and automatic themes on the same editorial design.",
         "Full interface in Spanish and English.",
         "Start/end trimming: only the selected range is downloaded.",
         ".srt subtitles alongside the .txt file.",

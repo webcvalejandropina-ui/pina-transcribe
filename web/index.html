@@ -4,203 +4,199 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <meta name="color-scheme" content="light dark"/>
-<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)"/>
-<meta name="theme-color" content="#11130f" media="(prefers-color-scheme: dark)"/>
-<title>Piña Transcribe</title>
+<title>PIÑA-TRANSCRIBE</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
 <script src="/static/boot.js"></script>
 <link rel="stylesheet" href="/static/styles.css"/>
 </head>
 <body>
-<a class="skip" href="#source">Saltar al formulario</a>
 
-<header class="topbar">
-  <div class="brand">
-    <img src="/favicon.svg" alt="" width="34" height="34"/>
-    <div>
-      <strong>Piña Transcribe</strong>
-      <span class="version" id="version">v—</span>
+<div class="utility-bar">
+  <div class="meta" id="utility-meta">V— / PUERTO 15000</div>
+  <div class="group">
+    <div class="toggles">
+      <div class="toggle" role="group" data-i18n-aria="nav.lang" aria-label="Idioma">
+        <button type="button" data-lang="es">ES</button><span class="sep">/</span><button type="button" data-lang="en">EN</button>
+      </div>
+      <div class="toggle" role="group" data-i18n-aria="nav.theme" aria-label="Tema">
+        <button type="button" data-theme-choice="auto" data-i18n="nav.theme.auto">Auto</button><span class="sep">/</span><button type="button" data-theme-choice="light" data-i18n="nav.theme.light">Claro</button><span class="sep">/</span><button type="button" data-theme-choice="dark" data-i18n="nav.theme.dark">Oscuro</button>
+      </div>
     </div>
+    <a href="https://github.com/openai/whisper" target="_blank" rel="noopener">Whisper</a>
+    <a href="https://github.com/yt-dlp/yt-dlp" target="_blank" rel="noopener">yt-dlp</a>
+    <span class="meta" id="clock"></span>
   </div>
-  <div class="topbar-actions">
-    <span class="status" id="status"><span class="dot"></span><span data-i18n="nav.online">En línea</span></span>
-    <div class="switch" role="group" data-i18n-aria="nav.lang" aria-label="Idioma">
-      <button type="button" data-lang="es">ES</button>
-      <button type="button" data-lang="en">EN</button>
-    </div>
-    <button type="button" class="icon-btn" id="theme-btn" data-i18n-title="nav.theme" title="Tema">
-      <svg class="i-auto" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16Z" class="fill"/></svg>
-      <svg class="i-light" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
-      <svg class="i-dark" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5Z"/></svg>
-      <span class="theme-label" id="theme-label"></span>
-    </button>
+</div>
+
+<nav class="primary-nav">
+  <div class="brand">PIÑA<span>/ TRANSCRIBE</span></div>
+  <div class="nav-right">
+    <span class="status-dot" id="status"><span class="pulse"></span> <span data-i18n="nav.online">SERVIDOR ACTIVO</span></span>
   </div>
-</header>
+</nav>
 
 <section class="hero">
-  <p class="kicker" data-i18n="hero.kicker">YouTube · Twitch VOD · 100 % local</p>
-  <h1 data-i18n-html="hero.title">De vídeo a texto,<br/>sin salir de tu máquina.</h1>
+  <p class="eyebrow" data-i18n="hero.kicker">Transcripcion local · YouTube · Twitch VOD</p>
+  <h1 data-i18n-html="hero.title">De video<br/>a <em>texto.</em></h1>
   <p class="sub" data-i18n="hero.sub"></p>
 </section>
 
-<main class="layout">
-  <div class="col-main">
-    <section class="card" id="form-card">
+<main>
+  <div>
+    <div class="card" id="form-card">
       <form id="form" autocomplete="off" novalidate>
-        <label class="label" for="source" data-i18n="form.source">Enlace o ID del vídeo</label>
-        <div class="source-field" id="source-field">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1 1"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1-1"/></svg>
-          <input id="source" type="text" inputmode="url" spellcheck="false" required data-i18n-placeholder="form.placeholder"/>
-          <span class="badge" id="detected" hidden></span>
+
+        <h3 data-i18n="form.h.source">01 / Fuente</h3>
+        <div class="segmented" id="platform" role="radiogroup">
+          <button type="button" class="chip" role="radio" data-value="youtube" aria-checked="true">YouTube</button>
+          <button type="button" class="chip" role="radio" data-value="twitch" aria-checked="false">Twitch VOD</button>
         </div>
 
-        <div class="grid-2">
+        <h3 data-i18n="form.h.url">02 / URL o ID del video</h3>
+        <div class="input-pill" id="url-pill">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1 1"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1-1"/></svg>
+          <input type="text" id="source" spellcheck="false" required data-i18n-placeholder="form.placeholder"/>
+          <span class="meta" id="detected"></span>
+        </div>
+
+        <h3 data-i18n="form.h.model">03 / Modelo Whisper</h3>
+        <div class="segmented" id="models" role="radiogroup"></div>
+
+        <h3 data-i18n="form.h.options">04 / Idioma, dispositivo y fragmento</h3>
+        <div class="field-row">
           <div>
-            <span class="label" data-i18n="form.platform">Plataforma</span>
-            <div class="segmented" id="platform" role="radiogroup">
-              <button type="button" role="radio" data-value="youtube" aria-checked="true">YouTube</button>
-              <button type="button" role="radio" data-value="twitch" aria-checked="false">Twitch VOD</button>
-            </div>
-          </div>
-          <div>
-            <span class="label" data-i18n="form.device">Procesador</span>
-            <div class="segmented" id="device" role="radiogroup">
-              <button type="button" role="radio" data-value="auto" aria-checked="true" data-i18n="form.device.auto">Auto</button>
-              <button type="button" role="radio" data-value="cpu" aria-checked="false" data-i18n="form.device.cpu">CPU</button>
-              <button type="button" role="radio" data-value="gpu" aria-checked="false" data-i18n="form.device.gpu">GPU</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="label-row">
-          <span class="label" data-i18n="form.model">Modelo</span>
-          <span class="hint" data-i18n="form.model.hint"></span>
-        </div>
-        <div class="chips" id="models" role="radiogroup"></div>
-
-        <details class="advanced" id="advanced">
-          <summary data-i18n="form.more">Ajustes avanzados</summary>
-          <div class="grid-2">
-            <div>
-              <label class="label" for="lang" data-i18n="form.lang">Idioma del audio</label>
-              <select id="lang" class="input">
-                <option value="" data-i18n="form.lang.auto">Detectar automáticamente</option>
-                <option value="es">Español</option>
-                <option value="en">English</option>
-                <option value="ca">Català</option>
-                <option value="gl">Galego</option>
-                <option value="eu">Euskara</option>
-                <option value="pt">Português</option>
-                <option value="fr">Français</option>
-                <option value="it">Italiano</option>
-                <option value="de">Deutsch</option>
-                <option value="nl">Nederlands</option>
-                <option value="ja">日本語</option>
-                <option value="ko">한국어</option>
-                <option value="zh">中文</option>
-                <option value="ru">Русский</option>
+            <div class="field-label" data-i18n="form.lang">Idioma (opcional)</div>
+            <div class="lang-pill">
+              <select id="lang">
+                <option value="" data-i18n="form.lang.auto">Auto</option>
+                <option value="es">Español · es</option>
+                <option value="en">English · en</option>
+                <option value="ca">Català · ca</option>
+                <option value="gl">Galego · gl</option>
+                <option value="eu">Euskara · eu</option>
+                <option value="pt">Português · pt</option>
+                <option value="fr">Français · fr</option>
+                <option value="it">Italiano · it</option>
+                <option value="de">Deutsch · de</option>
+                <option value="nl">Nederlands · nl</option>
+                <option value="ja">日本語 · ja</option>
+                <option value="ko">한국어 · ko</option>
+                <option value="zh">中文 · zh</option>
+                <option value="ru">Русский · ru</option>
               </select>
             </div>
-            <div>
-              <span class="label" data-i18n="form.range">Fragmento (opcional)</span>
-              <div class="range">
-                <input id="start" class="input" type="text" inputmode="numeric" placeholder="0:00" data-i18n-aria="form.start" aria-label="Inicio"/>
-                <span aria-hidden="true">→</span>
-                <input id="end" class="input" type="text" inputmode="numeric" placeholder="—" data-i18n-aria="form.end" aria-label="Fin"/>
-              </div>
+          </div>
+          <div>
+            <div class="field-label" data-i18n="form.device">Dispositivo</div>
+            <div class="segmented" id="device" role="radiogroup">
+              <button type="button" class="chip" role="radio" data-value="auto" aria-checked="true" data-i18n="form.device.auto">Auto</button>
+              <button type="button" class="chip" role="radio" data-value="cpu" aria-checked="false" data-i18n="form.device.cpu">CPU</button>
+              <button type="button" class="chip" role="radio" data-value="gpu" aria-checked="false" data-i18n="form.device.gpu">GPU</button>
             </div>
           </div>
-          <p class="hint" data-i18n="form.range.hint"></p>
-        </details>
+        </div>
+        <div class="field-row">
+          <div class="span-all">
+            <div class="field-label" data-i18n="form.range">Fragmento (opcional)</div>
+            <div class="range-row">
+              <div class="lang-pill" id="start-pill"><input type="text" id="start" inputmode="numeric" placeholder="0:00" data-i18n-aria="form.start" aria-label="Inicio"/></div>
+              <span class="arrow">→</span>
+              <div class="lang-pill" id="end-pill"><input type="text" id="end" inputmode="numeric" placeholder="--:--" data-i18n-aria="form.end" aria-label="Fin"/></div>
+            </div>
+            <div class="field-hint" data-i18n="form.range.hint"></div>
+          </div>
+        </div>
 
-        <div class="actions">
-          <button type="submit" class="btn btn-primary" id="submit">
-            <span data-i18n="form.submit">Transcribir</span>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-          </button>
-          <button type="button" class="btn btn-ghost" id="reset" data-i18n="form.reset">Limpiar</button>
-          <span class="spacer"></span>
-          <kbd data-i18n="form.shortcut">Ctrl + Enter</kbd>
+        <div class="cta-row">
+          <button type="submit" class="btn btn-primary" id="submit" data-i18n="form.submit">Transcribir</button>
+          <button type="button" class="btn btn-secondary" id="reset" data-i18n="form.reset">Limpiar</button>
+          <div class="spacer"></div>
+          <span class="kbd">CTRL + ENTER</span>
         </div>
       </form>
 
-      <div class="progress" id="progress" hidden>
-        <ol class="steps" id="steps">
-          <li data-phase="init"><span class="n">1</span><span data-i18n="phase.init">Preparar</span></li>
-          <li data-phase="download"><span class="n">2</span><span data-i18n="phase.download">Descargar</span></li>
-          <li data-phase="transcribe"><span class="n">3</span><span data-i18n="phase.transcribe">Transcribir</span></li>
-          <li data-phase="save"><span class="n">4</span><span data-i18n="phase.save">Guardar</span></li>
-          <li data-phase="done"><span class="n">✓</span><span data-i18n="phase.done">Listo</span></li>
-        </ol>
-        <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" id="bar"><span id="bar-fill"></span></div>
+      <div class="progress-section" id="progress">
+        <h3 class="mt-32" data-i18n="progress.title">Progreso</h3>
+        <div class="phases" id="steps">
+          <div class="phase" data-phase="init"><span class="label" data-i18n="phase.init">Init</span><span class="pct">--</span></div>
+          <div class="phase" data-phase="download"><span class="label" data-i18n="phase.download">Descarga</span><span class="pct">--</span></div>
+          <div class="phase" data-phase="transcribe"><span class="label" data-i18n="phase.transcribe">Transcribe</span><span class="pct">--</span></div>
+          <div class="phase" data-phase="save"><span class="label" data-i18n="phase.save">Guarda</span><span class="pct">--</span></div>
+          <div class="phase" data-phase="done"><span class="label" data-i18n="phase.done">Listo</span><span class="pct">--</span></div>
+        </div>
+        <div class="bar" id="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100"><span id="bar-fill"></span></div>
         <div class="bar-meta">
-          <span id="bar-msg" data-i18n="progress.waiting">Esperando…</span>
+          <span id="bar-msg" data-i18n="progress.waiting">Esperando...</span>
           <span><strong id="bar-pct">0%</strong> · <span id="elapsed">00:00</span></span>
         </div>
       </div>
 
-      <div class="alert" id="error" role="alert" hidden>
-        <strong data-i18n="err.title">Algo ha fallado</strong>
-        <p id="error-msg"></p>
+      <div class="error-box" id="error" role="alert">
+        <span class="tag" data-i18n="err.title">Error</span>
+        <div id="error-msg"></div>
       </div>
-    </section>
+    </div>
 
-    <section class="card result" id="result" hidden>
-      <div class="result-head">
-        <div class="result-title">
-          <h2 id="r-title" data-i18n="result.title">Transcripción</h2>
-          <div class="tags" id="r-tags"></div>
-        </div>
-      </div>
-      <div class="result-tools">
-        <div class="search">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-          <input id="search" type="search" data-i18n-placeholder="result.search"/>
-          <span class="count" id="match-count"></span>
+    <section class="result" id="result">
+      <div class="result-header">
+        <div class="result-main">
+          <h2 class="title" id="r-title" data-i18n="result.title">Transcripcion</h2>
+          <div class="result-meta" id="r-tags"></div>
         </div>
         <div class="result-actions">
-          <button type="button" class="btn btn-ghost btn-sm" id="copy" data-i18n="result.copy">Copiar</button>
-          <a class="btn btn-ghost btn-sm" id="dl-srt" href="#" download data-i18n="result.srt">Subtítulos .srt</a>
-          <a class="btn btn-primary btn-sm" id="dl-txt" href="#" download data-i18n="result.txt">Descargar .txt</a>
+          <button class="btn btn-secondary" id="copy" data-i18n="result.copy">Copiar texto</button>
+          <a class="btn btn-ghost" id="dl-srt" href="#" download data-i18n="result.srt">Subtitulos .srt</a>
+          <a class="btn btn-primary" id="dl-txt" href="#" download data-i18n="result.txt">Descargar .txt</a>
         </div>
       </div>
-      <div class="transcript" id="transcript" tabindex="0"></div>
+      <div class="toolbar">
+        <div class="input-pill search-pill">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input type="text" id="search" data-i18n-placeholder="result.search"/>
+          <span class="match-count" id="match-count"></span>
+        </div>
+        <button class="btn-icon" id="clear-search" data-i18n-title="result.clear" title="Limpiar busqueda">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="transcript" id="transcript"></div>
     </section>
   </div>
 
-  <aside class="col-side">
-    <section class="panel" id="system-panel">
-      <h3 data-i18n="side.system">Tu equipo</h3>
-      <dl class="specs">
-        <div><dt data-i18n="side.cores">Hilos de CPU</dt><dd id="sys-cpu">—</dd></div>
-        <div><dt data-i18n="side.memory">Memoria</dt><dd id="sys-mem">—</dd></div>
-        <div><dt data-i18n="side.gpu">GPU</dt><dd id="sys-gpu">—</dd></div>
-        <div><dt data-i18n="side.recommended">Modelo sugerido</dt><dd id="sys-model" class="accent">—</dd></div>
+  <aside class="aside">
+    <div class="tip-block">
+      <h3 data-i18n="side.tips">Atajos.</h3>
+      <p><kbd>Ctrl</kbd> + <kbd>Enter</kbd> &nbsp; <span data-i18n="side.tip.submit"></span></p>
+      <p><kbd>Esc</kbd> &nbsp; <span data-i18n="side.tip.search"></span></p>
+      <p class="mt-16" data-i18n="side.tip.paste"></p>
+    </div>
+
+    <div class="system-block">
+      <h3 data-i18n="side.system">Tu equipo.</h3>
+      <dl class="spec-grid">
+        <div><dt data-i18n="side.cores">Hilos CPU</dt><dd id="sys-cpu">--</dd></div>
+        <div><dt data-i18n="side.memory">Memoria</dt><dd id="sys-mem">--</dd></div>
+        <div><dt data-i18n="side.gpu">GPU</dt><dd id="sys-gpu">--</dd></div>
+        <div><dt data-i18n="side.recommended">Modelo sugerido</dt><dd id="sys-model" class="ok">--</dd></div>
       </dl>
-    </section>
+    </div>
 
-    <section class="panel">
-      <h3 data-i18n="side.history">Recientes</h3>
-      <ul class="history" id="history"></ul>
-    </section>
+    <div class="release-block">
+      <div class="release-meta" id="release-meta"></div>
+      <h3 data-i18n="side.release">Últimos cambios.</h3>
+      <ul id="changes"></ul>
+    </div>
 
-    <section class="panel">
-      <h3><span data-i18n="side.release">Novedades</span> <span class="muted" id="release-meta"></span></h3>
-      <ul class="changes" id="changes"></ul>
-    </section>
-
-    <section class="panel tips">
-      <h3 data-i18n="side.tips">Atajos</h3>
-      <p><kbd>Ctrl</kbd> + <kbd>Enter</kbd> <span data-i18n="side.tip.submit"></span></p>
-      <p><kbd>Esc</kbd> <span data-i18n="side.tip.search"></span></p>
-      <p class="muted" data-i18n="side.tip.paste"></p>
-    </section>
+    <div class="history">
+      <h3 data-i18n="side.history">Recientes.</h3>
+      <div id="history"></div>
+    </div>
   </aside>
 </main>
 
-<footer class="footer">
-  <span><strong>Piña Transcribe</strong> <span id="footer-version"></span> · <span data-i18n="footer.privacy"></span></span>
-  <span class="muted" data-i18n="footer.legal"></span>
+<footer>
+  <div id="footer-meta">PIÑA-TRANSCRIBE</div>
+  <div class="legal" data-i18n="footer.legal"></div>
 </footer>
 
 <script src="/static/i18n.js"></script>

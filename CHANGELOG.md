@@ -4,7 +4,7 @@
 
 **Español**
 
-- Interfaz rediseñada desde cero con identidad propia y modo claro, oscuro o automático.
+- Modo claro, oscuro o automático sobre el diseño editorial de siempre (líneas rectas, tipografía condensada).
 - Interfaz completa en español e inglés (detecta el idioma del navegador y se puede cambiar).
 - Recorte por inicio y fin (`start`/`end` en la API, `--start`/`--end` en la CLI): solo se descarga el tramo elegido.
 - Subtítulos `.srt` con los tiempos del vídeo original, además del `.txt`.
@@ -21,7 +21,7 @@
 
 **English**
 
-- Interface redesigned from scratch with its own identity and light, dark or automatic themes.
+- Light, dark or automatic themes on the same editorial design (straight lines, condensed type).
 - Full interface in Spanish and English (follows the browser language and can be switched).
 - Start/end trimming (`start`/`end` in the API, `--start`/`--end` in the CLI): only the selected range is downloaded.
 - `.srt` subtitles timed to the original video, alongside the `.txt`.

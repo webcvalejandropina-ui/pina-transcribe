@@ -10,14 +10,7 @@
     set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* modo privado */ } },
   };
 
-  const MAIN_MODELS = ['tiny', 'base', 'small', 'medium', 'large-v3'];
-  const MODEL_INFO = {
-    tiny: { es: 'Ultrarrápido', en: 'Ultra fast' },
-    base: { es: 'Rápido', en: 'Fast' },
-    small: { es: 'Equilibrado', en: 'Balanced' },
-    medium: { es: 'Preciso', en: 'Accurate' },
-    'large-v3': { es: 'Máxima calidad', en: 'Best quality' },
-  };
+  const DEFAULT_MODELS = ['tiny', 'tiny.en', 'base', 'base.en', 'small', 'small.en', 'medium', 'medium.en', 'large-v1', 'large-v2', 'large-v3', 'large'];
   const PHASES = ['init', 'download', 'transcribe', 'save', 'done'];
 
   const state = {
@@ -28,6 +21,7 @@
     models: [],
     recommended: '',
     about: null,
+    system: null,
     pollTimer: null,
     elapsedTimer: null,
     startedAt: 0,
@@ -36,7 +30,10 @@
     lastError: null,
     lastProgress: null,
     history: [],
+    online: true,
   };
+
+  const show = (id, on) => $(id).classList.toggle('active', on);
 
   // ---------------------------------------------------------------- i18n
   const t = (key, vars) => {
@@ -54,9 +51,10 @@
     document.querySelectorAll('[data-i18n-title]').forEach((el) => { el.title = t(el.dataset.i18nTitle); });
     document.querySelectorAll('[data-i18n-aria]').forEach((el) => { el.setAttribute('aria-label', t(el.dataset.i18nAria)); });
     document.querySelectorAll('[data-lang]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === state.lang)));
-    updateThemeLabel();
+    setOnline(state.online);
     renderModels();
     renderAbout();
+    renderSystem();
     renderHistory();
     if (state.lastResult) renderResult(state.lastResult.id, state.lastResult.job, false);
     if (state.lastProgress) setProgress(...state.lastProgress);
@@ -74,19 +72,18 @@
   const applyTheme = (pref) => {
     root.dataset.themePref = pref;
     root.dataset.theme = pref === 'dark' || (pref === 'auto' && media.matches) ? 'dark' : 'light';
-    updateThemeLabel();
+    document.querySelectorAll('[data-theme-choice]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.themeChoice === pref)));
   };
-  const updateThemeLabel = () => { $('theme-label').textContent = t('nav.theme.' + root.dataset.themePref); };
-  $('theme-btn').addEventListener('click', () => {
-    const order = ['auto', 'light', 'dark'];
-    const next = order[(order.indexOf(root.dataset.themePref) + 1) % order.length];
-    store.set('pina.theme', next);
-    applyTheme(next);
-  });
+  document.querySelectorAll('[data-theme-choice]').forEach((b) => b.addEventListener('click', () => {
+    store.set('pina.theme', b.dataset.themeChoice);
+    applyTheme(b.dataset.themeChoice);
+  }));
   media.addEventListener('change', () => { if (root.dataset.themePref === 'auto') applyTheme('auto'); });
+  applyTheme(root.dataset.themePref || 'auto');
 
   // ---------------------------------------------------------------- utilidades
   const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const fmtClock = (sec) => {
     const s = Math.max(0, Math.round(sec));
     const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
@@ -108,34 +105,42 @@
     return { ok: res.ok, status: res.status, data };
   };
 
+  // ---------------------------------------------------------------- reloj
+  const tickClock = () => {
+    const d = new Date();
+    $('clock').textContent = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  };
+  tickClock();
+  setInterval(tickClock, 30000);
+
   // ---------------------------------------------------------------- segmentados
+  const setSegmented = (id, value) => {
+    $(id).querySelectorAll('.chip').forEach((b) => {
+      const on = b.dataset.value === value;
+      b.setAttribute('aria-checked', String(on));
+      b.classList.toggle('active', on);
+    });
+  };
   const bindSegmented = (id, onChange) => {
-    const group = $(id);
-    group.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
+    $(id).querySelectorAll('.chip').forEach((b) => b.addEventListener('click', () => {
       setSegmented(id, b.dataset.value);
       onChange(b.dataset.value);
     }));
   };
-  const setSegmented = (id, value) => {
-    $(id).querySelectorAll('button').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.value === value)));
-  };
   bindSegmented('platform', (v) => { state.platform = v; });
   bindSegmented('device', (v) => { state.device = v; });
+  setSegmented('platform', 'youtube');
+  setSegmented('device', 'auto');
 
   // ---------------------------------------------------------------- modelos
   // Sin preferencia guardada, se usa el modelo recomendado para este equipo.
-  const currentModel = () => state.model || state.recommended || 'base';
+  const currentModel = () => state.model || state.recommended || 'tiny';
   const renderModels = () => {
-    const box = $('models');
-    const list = state.models.length ? state.models.filter((m) => MAIN_MODELS.includes(m)) : MAIN_MODELS;
+    const list = state.models.length ? state.models : DEFAULT_MODELS;
     const selected = currentModel();
-    box.innerHTML = list.map((m) => `
-      <button type="button" class="chip" role="radio" data-model="${m}" aria-checked="${m === selected}">
-        ${m === state.recommended ? `<span class="rec">${escapeHtml(t('form.recommended'))}</span>` : ''}
-        <b>${m}</b><small>${escapeHtml((MODEL_INFO[m] || {})[state.lang] || '')}</small>
-      </button>`).join('');
-    box.querySelectorAll('.chip').forEach((c) => c.addEventListener('click', () => {
-      state.model = c.dataset.model;
+    $('models').innerHTML = list.map((m) => `<button type="button" class="chip${m === selected ? ' active' : ''}" role="radio" data-value="${m}" aria-checked="${m === selected}">${m}${m === state.recommended ? `<sup>${escapeHtml(t('form.recommended'))}</sup>` : ''}</button>`).join('');
+    $('models').querySelectorAll('.chip').forEach((c) => c.addEventListener('click', () => {
+      state.model = c.dataset.value;
       store.set('pina.model', state.model);
       renderModels();
     }));
@@ -157,17 +162,13 @@
   };
   const onSourceInput = () => {
     const d = detect($('source').value);
-    const badge = $('detected');
-    if (d) {
-      badge.hidden = false;
-      badge.textContent = (d.platform === 'youtube' ? 'YouTube' : 'Twitch') + ' · ' + d.id;
-      state.platform = d.platform;
-      setSegmented('platform', d.platform);
-    } else {
-      badge.hidden = true;
-    }
+    $('detected').textContent = d ? d.platform.toUpperCase() + ' / ' + d.id : '';
+    if (d) { state.platform = d.platform; setSegmented('platform', d.platform); }
   };
   $('source').addEventListener('input', onSourceInput);
+  $('source').addEventListener('paste', () => setTimeout(onSourceInput, 0));
+  $('source').addEventListener('focus', () => $('url-pill').classList.add('focused'));
+  $('source').addEventListener('blur', () => $('url-pill').classList.remove('focused'));
 
   // ---------------------------------------------------------------- tiempos
   const parseTime = (raw) => {
@@ -180,7 +181,7 @@
     return nums.reduce((acc, n) => acc * 60 + n, 0);
   };
   ['start', 'end'].forEach((id) => $(id).addEventListener('input', () => {
-    $(id).classList.toggle('invalid', Number.isNaN(parseTime($(id).value)));
+    $(id + '-pill').classList.toggle('invalid', Number.isNaN(parseTime($(id).value)));
   }));
 
   // ---------------------------------------------------------------- progreso
@@ -198,13 +199,15 @@
 
   const setProgress = (phase, pct, msgKey) => {
     state.lastProgress = [phase, pct, msgKey];
-    $('progress').hidden = false;
+    show('progress', true);
     const idx = Math.max(0, PHASES.indexOf(phase));
-    document.querySelectorAll('#steps li').forEach((li, i) => {
-      li.classList.toggle('done', i < idx || phase === 'done');
-      li.classList.toggle('active', i === idx && phase !== 'done');
-    });
     const p = Math.round(pct || 0);
+    document.querySelectorAll('#steps .phase').forEach((el, i) => {
+      const done = i < idx || phase === 'done';
+      el.classList.toggle('done', done);
+      el.classList.toggle('active', i === idx && phase !== 'done');
+      el.querySelector('.pct').textContent = done ? '100' : i === idx ? String(p) : '--';
+    });
     $('bar-fill').style.width = p + '%';
     $('bar').setAttribute('aria-valuenow', String(p));
     $('bar-pct').textContent = p + '%';
@@ -212,10 +215,15 @@
   };
   const resetProgress = () => {
     state.lastProgress = null;
-    $('progress').hidden = true;
+    show('progress', false);
     $('bar-fill').style.width = '0';
+    $('bar-pct').textContent = '0%';
     $('elapsed').textContent = '00:00';
-    document.querySelectorAll('#steps li').forEach((li) => li.classList.remove('done', 'active'));
+    $('bar-msg').textContent = t('progress.waiting');
+    document.querySelectorAll('#steps .phase').forEach((el) => {
+      el.classList.remove('done', 'active');
+      el.querySelector('.pct').textContent = '--';
+    });
   };
 
   const showError = (err) => {
@@ -223,9 +231,9 @@
     const code = err && err.code;
     const known = code && DICT.es['err.' + code];
     $('error-msg').textContent = known ? t('err.' + code) : (err && err.message) || t('err.unexpected');
-    $('error').hidden = false;
+    show('error', true);
   };
-  const clearError = () => { state.lastError = null; $('error').hidden = true; };
+  const clearError = () => { state.lastError = null; show('error', false); };
   const detailToErr = (data, fallback) => {
     const d = data && data.detail;
     if (d && typeof d === 'object' && d.code) return d;
@@ -243,7 +251,6 @@
     const start = $('start').value.trim();
     const end = $('end').value.trim();
     if (Number.isNaN(parseTime(start)) || Number.isNaN(parseTime(end))) {
-      $('advanced').open = true;
       showError({ code: 'invalid_time' });
       return;
     }
@@ -251,7 +258,7 @@
     if (d) { state.platform = d.platform; setSegmented('platform', d.platform); }
 
     clearError();
-    $('result').hidden = true;
+    show('result', false);
     state.lastResult = null;
     busy(true);
     resetProgress();
@@ -311,20 +318,20 @@
       }
     };
     once();
-    state.pollTimer = setInterval(once, 700);
+    state.pollTimer = setInterval(once, 500);
   };
 
   $('form').addEventListener('submit', (e) => { e.preventDefault(); submit(); });
   $('reset').addEventListener('click', () => {
-    ['source', 'start', 'end', 'search'].forEach((id) => { $(id).value = ''; $(id).classList.remove('invalid'); });
+    ['source', 'start', 'end', 'search'].forEach((id) => { $(id).value = ''; });
+    ['start-pill', 'end-pill'].forEach((id) => $(id).classList.remove('invalid'));
     $('lang').value = '';
     onSourceInput();
     clearError();
     resetProgress();
-    $('result').hidden = true;
+    show('result', false);
     state.lastResult = null;
     history.replaceState(null, '', location.pathname + location.search);
-    $('source').focus();
   });
 
   // ---------------------------------------------------------------- resultado
@@ -333,26 +340,25 @@
     const r = job.result || {};
     $('r-title').textContent = r.title || t('result.title');
     const words = (r.text || '').split(/\s+/).filter(Boolean).length;
-    const tags = [];
-    if (r.platform) tags.push(`<span class="tag"><b>${r.platform === 'youtube' ? 'YouTube' : 'Twitch'}</b></span>`);
-    if (r.language) tags.push(`<span class="tag">${escapeHtml(t('result.lang'))} <b>${escapeHtml(r.language)}</b></span>`);
-    if (r.model) tags.push(`<span class="tag">${escapeHtml(t('result.model'))} <b>${escapeHtml(r.model)}</b></span>`);
-    if (r.device) tags.push(`<span class="tag">${escapeHtml(t('result.device'))} <b>${escapeHtml(r.device.toUpperCase())}</b></span>`);
+    const parts = [];
+    if (r.platform) parts.push('<b>' + escapeHtml(r.platform.toUpperCase()) + '</b>');
+    if (r.language) parts.push(escapeHtml(t('result.lang')) + ' <b>' + escapeHtml(r.language) + '</b>');
+    if (r.model) parts.push(escapeHtml(t('result.model')) + ' <b>' + escapeHtml(r.model) + '</b>');
+    if (r.device) parts.push(escapeHtml(t('result.device')) + ' <b>' + escapeHtml(r.device.toUpperCase()) + '</b>');
     if (r.start_seconds != null || r.end_seconds != null) {
-      const a = fmtClock(r.start_seconds || 0);
       const b = r.end_seconds != null ? fmtClock(r.end_seconds) : '…';
-      tags.push(`<span class="tag">${escapeHtml(t('result.range'))} <b>${a} – ${b}</b></span>`);
+      parts.push(escapeHtml(t('result.range')) + ' <b>' + fmtClock(r.start_seconds || 0) + ' – ' + b + '</b>');
     }
-    tags.push(`<span class="tag">${escapeHtml(t('result.words', { n: words.toLocaleString(state.lang) }))}</span>`);
+    parts.push(escapeHtml(t('result.words', { n: words.toLocaleString(state.lang) })));
     if (r.url && /^https:\/\/(www\.)?(youtube\.com|twitch\.tv)\//.test(r.url)) {
-      tags.push(`<a class="tag" href="${escapeHtml(r.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(t('result.source'))} ↗</a>`);
+      parts.push('<a href="' + escapeHtml(r.url) + '" target="_blank" rel="noopener noreferrer" class="source-link">' + escapeHtml(t('result.source')) + '</a>');
     }
-    $('r-tags').innerHTML = tags.join('');
+    $('r-tags').innerHTML = parts.join(' · ');
     state.transcript = r.text || '';
     highlight($('search').value);
     $('dl-txt').href = '/api/jobs/' + jobId + '/download?format=txt';
     $('dl-srt').href = '/api/jobs/' + jobId + '/download?format=srt';
-    $('result').hidden = false;
+    show('result', true);
     setProgress('done', 100, 'done');
     if (scroll) $('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
@@ -362,15 +368,12 @@
     const box = $('transcript');
     const query = q.trim();
     if (!query) { box.textContent = text; $('match-count').textContent = ''; return; }
-    const re = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
     let n = 0;
-    box.innerHTML = escapeHtml(text).replace(new RegExp(escapeHtml(query).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), (m) => { n++; return '<mark>' + m + '</mark>'; });
-    void re;
+    box.innerHTML = escapeHtml(text).replace(new RegExp(escapeRe(escapeHtml(query)), 'gi'), (m) => { n++; return '<mark>' + m + '</mark>'; });
     $('match-count').textContent = t('result.matches', { n });
-    const first = box.querySelector('mark');
-    if (first) first.scrollIntoView({ block: 'nearest' });
   };
   $('search').addEventListener('input', (e) => highlight(e.target.value));
+  $('clear-search').addEventListener('click', () => { $('search').value = ''; highlight(''); });
 
   $('copy').addEventListener('click', async () => {
     if (!state.transcript) return;
@@ -387,22 +390,27 @@
   const renderHistory = () => {
     const box = $('history');
     if (!state.history.length) {
-      box.innerHTML = `<li class="empty">${escapeHtml(t('side.history.empty'))}</li>`;
+      box.innerHTML = `<div class="history-empty">${escapeHtml(t('side.history.empty'))}</div>`;
       return;
     }
     box.innerHTML = state.history.map((j) => {
       const cls = j.status === 'done' ? 'done' : j.status === 'error' ? 'error' : 'running';
-      const right = j.status === 'done' ? (j.language || 'ok') : j.status === 'error' ? 'error' : Math.round(j.progress || 0) + '%';
-      return `<li data-id="${escapeHtml(j.job_id)}" tabindex="0">
+      const right = j.status === 'done' ? (j.language || 'OK') : j.status === 'error' ? 'ERROR' : Math.round(j.progress || 0) + '%';
+      return `<div class="history-item" data-id="${escapeHtml(j.job_id)}" tabindex="0">
         <div class="h-title">${escapeHtml(j.title || j.video_id || t('untitled'))}</div>
-        <div class="h-meta"><span class="h-dot ${cls}"></span>
-          <span>${escapeHtml(j.platform || '')}</span>·<span>${escapeHtml(j.model || '')}</span>·<span>${escapeHtml(right)}</span>·<span>${escapeHtml(fmtAgo(j.finished_at || j.created_at))}</span>
-        </div></li>`;
+        <div class="h-meta">
+          <span class="h-status ${cls}"></span>
+          <span>${escapeHtml((j.platform || '').toUpperCase())}</span><span>·</span>
+          <span>${escapeHtml((j.model || '').toUpperCase())}</span><span>·</span>
+          <span>${escapeHtml(String(right).toUpperCase())}</span><span>·</span>
+          <span>${escapeHtml(fmtAgo(j.finished_at || j.created_at))}</span>
+        </div>
+      </div>`;
     }).join('');
-    box.querySelectorAll('li[data-id]').forEach((li) => {
-      const open = () => openJob(li.dataset.id, true);
-      li.addEventListener('click', open);
-      li.addEventListener('keydown', (e) => { if (e.key === 'Enter') open(); });
+    box.querySelectorAll('.history-item').forEach((el) => {
+      const open = () => openJob(el.dataset.id, true);
+      el.addEventListener('click', open);
+      el.addEventListener('keydown', (e) => { if (e.key === 'Enter') open(); });
     });
   };
   const refreshHistory = async () => {
@@ -415,6 +423,7 @@
     }
   };
   const setOnline = (on) => {
+    state.online = on;
     $('status').classList.toggle('off', !on);
     const label = $('status').querySelector('[data-i18n]');
     label.dataset.i18n = on ? 'nav.online' : 'nav.offline';
@@ -443,19 +452,19 @@
   const renderAbout = () => {
     const a = state.about;
     if (!a) return;
-    $('version').textContent = 'v' + a.version;
-    $('footer-version').textContent = 'v' + a.version;
-    $('release-meta').textContent = 'v' + a.version + ' · ' + a.updated_at;
+    const vars = { v: a.version, d: a.updated_at };
+    $('utility-meta').textContent = t('util.meta', vars);
+    $('footer-meta').textContent = t('footer.meta', vars);
+    $('release-meta').textContent = t('side.release.meta', vars);
     const changes = (a.changes && (a.changes[state.lang] || a.changes.es)) || [];
     $('changes').innerHTML = changes.map((c) => `<li>${escapeHtml(c)}</li>`).join('');
   };
-  const renderSystem = (s) => {
+  const renderSystem = () => {
+    const s = state.system;
+    if (!s) return;
     $('sys-cpu').textContent = s.cpu_threads;
-    $('sys-mem').textContent = s.memory_gb != null ? s.memory_gb + ' GB' : '—';
-    const gpuEl = $('sys-gpu');
-    gpuEl.dataset.i18n = s.gpu_count > 0 ? '' : 'side.gpu.none';
-    gpuEl.textContent = s.gpu_count > 0 ? '× ' + s.gpu_count : t('side.gpu.none');
-    if (!gpuEl.dataset.i18n) delete gpuEl.dataset.i18n;
+    $('sys-mem').textContent = s.memory_gb != null ? s.memory_gb + ' GB' : '--';
+    $('sys-gpu').textContent = s.gpu_count > 0 ? '× ' + s.gpu_count : t('side.gpu.none');
     $('sys-model').textContent = s.recommended_model;
   };
 
@@ -467,12 +476,13 @@
     if (about.status === 'fulfilled' && about.value.ok) state.about = about.value.data;
     if (models.status === 'fulfilled' && models.value.ok) state.models = models.value.data.models || [];
     if (system.status === 'fulfilled' && system.value.ok) {
-      state.recommended = system.value.data.recommended_model;
-      renderSystem(system.value.data);
+      state.system = system.value.data;
+      state.recommended = state.system.recommended_model;
     }
-    if (state.model && state.models.length && !MAIN_MODELS.includes(state.model)) state.model = '';
+    if (state.model && state.models.length && !state.models.includes(state.model)) state.model = '';
     renderModels();
     renderAbout();
+    renderSystem();
     await refreshHistory();
     setInterval(refreshHistory, 5000);
     const id = location.hash.slice(1);
