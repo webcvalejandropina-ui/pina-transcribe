@@ -1,18 +1,22 @@
 # syntax=docker/dockerfile:1
+# Imagen CPU multiplataforma: linux/amd64 y linux/arm64 (Intel, AMD, Apple Silicon, Raspberry Pi 4/5).
 
 FROM denoland/deno:bin-2.6.3 AS deno
 
 FROM python:3.11-slim-bookworm
 
 LABEL org.opencontainers.image.title="pina-transcribe"
-LABEL org.opencontainers.image.description="YouTube/Twitch -> faster-whisper (CPU)"
-LABEL org.opencontainers.image.version="2.1.0"
-LABEL org.opencontainers.image.created="2026-09-16"
+LABEL org.opencontainers.image.description="YouTube/Twitch -> faster-whisper (CPU, amd64/arm64)"
+LABEL org.opencontainers.image.version="3.0.0"
+LABEL org.opencontainers.image.created="2026-11-11"
+LABEL org.opencontainers.image.source="https://github.com/webcvalejandropina-ui/pina-transcribe"
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONIOENCODING=utf-8 \
     PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PINA_KEEP_MODEL=1 \
     HF_HOME=/home/app/.cache/huggingface \
     XDG_CACHE_HOME=/home/app/.cache
 
@@ -30,6 +34,7 @@ RUN pip install --upgrade pip "setuptools>=83.0.0" \
 
 COPY transcribe.py launcher.py web_server.py docker_entrypoint.py app_metadata.py ./
 COPY utils/ utils/
+COPY web/ web/
 
 RUN useradd --create-home --uid 10001 --shell /usr/sbin/nologin app \
     && mkdir -p /app/logs /app/temp /app/outputs "$HF_HOME" \

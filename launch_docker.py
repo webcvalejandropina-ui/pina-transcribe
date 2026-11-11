@@ -19,6 +19,10 @@ def main() -> int:
         return 1
 
     compose = ["docker", "compose"]
+    env_file = root / "pina.env"
+    if env_file.is_file():
+        compose.extend(["--env-file", str(env_file)])
+        print("Usando configuración de", env_file.name)
     service = "transcribe-gpu" if use_gpu else "transcribe"
     if use_gpu:
         compose.extend(["--profile", "gpu"])
@@ -36,12 +40,13 @@ def main() -> int:
         return up.returncode
 
     print()
-    print("Interfaz web: http://127.0.0.1:15000")
+    port = os.environ.get("PINA_PORT", "15000")
+    print(f"Interfaz web / Web UI: http://127.0.0.1:{port}")
     print("Logs: docker compose logs -f", service)
     print("Parar: docker compose stop", service)
     print()
     print("Launcher consola (TTY): docker compose run --rm -it", service, "launcher")
-    print("CLI: docker compose run --rm", service, "youtube VIDEO_ID --cpu")
+    print("CLI: docker compose run --rm", service, "youtube VIDEO_ID --start 0:30 --end 2:00")
     return 0
 
 

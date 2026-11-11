@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
+from collections.abc import Iterable
 from datetime import datetime
 from pathlib import Path
 
@@ -26,6 +27,7 @@ from utils.helpers import (
 from utils.logger import setup_logger
 from utils.platform_handler import PlatformError, build_url, normalize_platform
 from utils.transcriber import TranscriptionError, transcribe_audio
+from utils.timecode import format_timecode, parse_timecode
 from utils.ui import build_ytdlp_rich_hook, create_console, create_progress
 from utils.whisper_models import ALLOWED_MODELS, validate_model
 
@@ -73,6 +75,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Forzar solo CPU (no usar CUDA aunque exista GPU).",
     )
     parser.add_argument(
+        "--start",
+        default=None,
+        metavar="TIEMPO",
+        help="Inicio del tramo a transcribir (segundos, mm:ss o hh:mm:ss).",
+    )
+    parser.add_argument(
+        "--end",
+        default=None,
+        metavar="TIEMPO",
+        help="Fin del tramo a transcribir (segundos, mm:ss o hh:mm:ss).",
+    )
+    parser.add_argument(
         "--no-color",
         action="store_true",
         help="Salida sin colores ANSI (útil en logs en crudo).",
@@ -91,12 +105,20 @@ def write_output_txt(
     language: str,
     lang_probability: float,
     body: str,
+    start_seconds: float | None = None,
+    end_seconds: float | None = None,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    fragment = ""
+    if start_seconds is not None or end_seconds is not None:
+        a = format_timecode(start_seconds or 0)
+        b = format_timecode(end_seconds) if end_seconds is not None else "fin"
+        fragment = f"Fragmento: {a} - {b}\n"
     header = (
         f"Plataforma: {platform}\n"
         f"Título: {title}\n"
         f"URL: {url}\n"
+        f"{fragment}"
         f"Fecha y hora: {when.isoformat(timespec='seconds')}\n"
         f"Modelo usado: {model}\n"
         f"Idioma detectado: {language} (probabilidad estimada: {lang_probability:.4f})\n"
@@ -105,6 +127,25 @@ def write_output_txt(
         f"{body}\n"
     )
     path.write_text(header, encoding="utf-8")
+
+
+def _srt_time(seconds: float) -> str:
+    ms = max(0, int(round(seconds * 1000)))
+    h, rem = divmod(ms, 3_600_000)
+    m, rem = divmod(rem, 60_000)
+    s, ms = divmod(rem, 1000)
+    return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
+
+
+def write_output_srt(path: Path, segments: Iterable, *, offset: float = 0.0) -> None:
+    """Escribe subtítulos SRT; ``offset`` desplaza los tiempos al vídeo original."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    blocks = []
+    for i, seg in enumerate(segments, start=1):
+        blocks.append(
+            f"{i}\n{_srt_time(seg.start + offset)} --> {_srt_time(seg.end + offset)}\n{seg.text}\n"
+        )
+    path.write_text("\n".join(blocks), encoding="utf-8")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -143,6 +184,14 @@ def main(argv: list[str] | None = None) -> int:
             return 2
 
         video_id = args.video_id.strip()
+        try:
+            start_s = parse_timecode(args.start)
+            end_s = parse_timecode(args.end)
+            if start_s is not None and end_s is not None and end_s <= start_s:
+                raise ValueError("--end debe ser mayor que --start")
+        except ValueError as e:
+            console.print(f"[err]{e}[/]")
+            return 2
         try:
             url = build_url(platform, video_id)
         except PlatformError as e:
@@ -187,6 +236,8 @@ def main(argv: list[str] | None = None) -> int:
                     job_dir,
                     quiet_ytdlp=True,
                     extra_progress_hooks=[rich_hook],
+                    start_seconds=start_s,
+                    end_seconds=end_s,
                 )
             except DownloadError as e:
                 console.print(f"[err]Descarga fallida:[/] {e}")
@@ -223,7 +274,10 @@ def main(argv: list[str] | None = None) -> int:
             language=result.language,
             lang_probability=result.language_probability,
             body=result.text,
+            start_seconds=start_s,
+            end_seconds=end_s,
         )
+        write_output_srt(out_path.with_suffix(".srt"), result.segments, offset=start_s or 0.0)
 
         logger.info("Guardado en %s", out_path.resolve())
 
