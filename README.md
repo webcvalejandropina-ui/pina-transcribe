@@ -21,7 +21,20 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/light-es.png" alt="Interfaz en modo claro con una transcripción terminada" width="900"/>
+  <a href="#puesta-en-marcha">Puesta en marcha</a> ·
+  <a href="#qué-modelo-elijo">Modelos</a> ·
+  <a href="#línea-de-comandos">CLI</a> ·
+  <a href="#configuración">Configuración</a> ·
+  <a href="#api">API</a> ·
+  <a href="CHANGELOG.md">Cambios</a>
+</p>
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/home-dark-es.png"/>
+    <img src="docs/screenshots/light-es.png" alt="Interfaz de Piña Transcribe con una transcripción terminada" width="900"/>
+  </picture>
+  <br/><sub>La captura sigue el tema claro u oscuro con el que estés viendo GitHub.</sub>
 </p>
 
 ---

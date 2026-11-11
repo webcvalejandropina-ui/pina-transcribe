@@ -21,7 +21,20 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/dark-en.png" alt="Dark mode interface with a finished transcript" width="900"/>
+  <a href="#getting-started">Getting started</a> ·
+  <a href="#which-model-should-i-pick">Models</a> ·
+  <a href="#command-line">CLI</a> ·
+  <a href="#configuration">Configuration</a> ·
+  <a href="#api">API</a> ·
+  <a href="CHANGELOG.md">Changelog</a>
+</p>
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark-en.png"/>
+    <img src="docs/screenshots/home-light-en.png" alt="Piña Transcribe interface" width="900"/>
+  </picture>
+  <br/><sub>The screenshot follows the light or dark theme you are viewing GitHub with.</sub>
 </p>
 
 ---
